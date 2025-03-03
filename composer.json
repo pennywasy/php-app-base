@@ -1,0 +1,11 @@
+{
+  "config": {
+    "platform": {
+      "php": "7.3.0"
+    }
+  },
+  "require": {
+    "guzzlehttp/guzzle": "^7.0",
+    "pecee/simple-router": "^5.0"
+  }
+}

@@ -1,0 +1,6 @@
+.env
+vendor
+/logs/*.log
+test.json
+resources/*.db
+.idea
