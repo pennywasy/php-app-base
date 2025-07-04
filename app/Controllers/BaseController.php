@@ -2,11 +2,23 @@
 
 namespace App\Controllers;
 
+use Pecee\Http\Request;
+use Pecee\Http\Response;
+use Pecee\SimpleRouter\SimpleRouter as Router;
 
-class BaseController
+abstract class AbstractController
 {
-	
-	public function __construct() {}
+    /**
+     * @var Response
+     */
+    protected $response;
+    /**
+     * @var Request
+     */
+    protected $request;
 
-	public function handle() {}
+    public function __construct() {
+        $this->request = Router::router()->getRequest();
+        $this->response =  new Response($this->request);
+    }
 }
