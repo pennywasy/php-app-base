@@ -3,14 +3,17 @@
 namespace App\Console;
 
 use App\Core\Command;
+use App\Core\Config;
 use Exception;
 
 class Kernel
 {
-    protected array $commands = [
-        Commands\MakeControllerCommand::class,
-        Commands\ServeCommand::class
-    ];
+    protected array $commands = [];
+
+    public function __construct()
+    {
+        $this->commands = Config::getInstance()->get('commands.commands', []);
+    }
 
     public function handle(array $argv): int
     {

@@ -13,6 +13,8 @@ class Loader
      */
     public static function register(): void
     {
+        require __DIR__ . DIRECTORY_SEPARATOR . 'helpers.php';
+
         self::loadEnv(__DIR__ . '/../../.env');
 
         spl_autoload_register(function ($class) {
