@@ -1,11 +1,7 @@
 <?php
 
 return [
-
-    /**
-     * Путь до БД, где организована очередь звонков
-     */
-
+    'default' => 'sqlite',
     'sqlite' => [
         'dbPath' => __DIR__ . '/../resources/' . $_ENV['DB_PATH']
     ],

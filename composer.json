@@ -6,6 +6,7 @@
   },
   "require": {
     "guzzlehttp/guzzle": "^7.0",
-    "pecee/simple-router": "^5.0"
+    "pecee/simple-router": "^5.0",
+    "illuminate/database": "^8.0"
   }
 }
