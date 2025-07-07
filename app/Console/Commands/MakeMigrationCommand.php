@@ -19,7 +19,15 @@ class MakeMigrationCommand extends Command
 
         $name = $this->getMigrationName($arguments[0]);
         $fileName = date('Y_m_d_His').'_'.$name.'.php';
-        $filePath = database_path('migrations' . DIRECTORY_SEPARATOR . $fileName);
+        $migrationsPath = database_path('migrations');
+        $filePath = $migrationsPath . DIRECTORY_SEPARATOR . $fileName;
+
+        if (!is_dir($migrationsPath)) {
+            if (!mkdir($migrationsPath, 0755, true)) {
+                $this->error("Failed to create migrations directory");
+                return 1;
+            }
+        }
 
         $stub = $this->getStubContent($name);
 
@@ -39,7 +47,13 @@ class MakeMigrationCommand extends Command
 
     protected function getStubContent(string $className): string
     {
-        $stub = file_get_contents(__DIR__. DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'migration.stub');
+        $stubPath = __DIR__. DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'migration.stub';
+        if (!file_exists($stubPath)) {
+            $this->error("Migration stub file not found");
+            return '';
+        }
+
+        $stub = file_get_contents($stubPath);
         return str_replace('{{ClassName}}', 'Create'.ucfirst($className).'Table', $stub);
     }
 }
