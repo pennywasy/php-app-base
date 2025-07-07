@@ -2,13 +2,15 @@
 
 namespace App\Services;
 
+use App\Core\Logger;
+use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
 class GuzzleService
 {
 
-    private $client;
+    private Client $client;
 
     public function __construct(array $config = [])
     {
@@ -16,49 +18,67 @@ class GuzzleService
     }
 
 
-    public function get(string $url, array $options = [])
+    /**
+     * @throws Exception
+     */
+    public function get(string $url, array $options = []): string
     {
         try {
             $response = $this->client->get($url, $options);
             return $response->getBody()->getContents();
         } catch (GuzzleException $e) {
             // Обработка ошибок
-            throw new \Exception("Guzzle GET request failed: " . $e->getMessage());
+            Logger::error("Guzzle GET request failed: " . $e->getMessage());
+            throw new Exception("Guzzle GET request failed: " . $e->getMessage());
         }
     }
 
-    public function post(string $url, array $options = [])
+    /**
+     * @throws Exception
+     */
+    public function post(string $url, array $options = []): string
     {
         try {
             $response = $this->client->post($url, $options);
             return $response->getBody()->getContents();
         } catch (GuzzleException $e) {
             // Обработка ошибок
-            throw new \Exception("Guzzle POST request failed: " . $e->getMessage());
+            Logger::error("Guzzle POST request failed: " . $e->getMessage());
+            throw new Exception("Guzzle POST request failed: " . $e->getMessage());
         }
     }
 
     // Метод для выполнения PUT-запроса
-    public function put(string $url, array $options = [])
+
+    /**
+     * @throws Exception
+     */
+    public function put(string $url, array $options = []): string
     {
         try {
             $response = $this->client->put($url, $options);
             return $response->getBody()->getContents();
         } catch (GuzzleException $e) {
             // Обработка ошибок
-            throw new \Exception("Guzzle PUT request failed: " . $e->getMessage());
+            Logger::error("Guzzle PUT request failed: " . $e->getMessage());
+            throw new Exception("Guzzle PUT request failed: " . $e->getMessage());
         }
     }
 
     // Метод для выполнения DELETE-запроса
-    public function delete(string $url, array $options = [])
+
+    /**
+     * @throws Exception
+     */
+    public function delete(string $url, array $options = []): string
     {
         try {
             $response = $this->client->delete($url, $options);
             return $response->getBody()->getContents();
         } catch (GuzzleException $e) {
             // Обработка ошибок
-            throw new \Exception("Guzzle DELETE request failed: " . $e->getMessage());
+            Logger::error("Guzzle DELETE request failed: " . $e->getMessage());
+            throw new Exception("Guzzle DELETE request failed: " . $e->getMessage());
         }
     }
 
