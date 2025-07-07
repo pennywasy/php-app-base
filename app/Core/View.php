@@ -39,17 +39,24 @@ class View
      */
     public static function asset(string $path): string
     {
-        $fullPath = dirname(__DIR__, 2)
-            . DIRECTORY_SEPARATOR
-            . 'public'
-            . DIRECTORY_SEPARATOR
-            . $path;
+        $publicPath = dirname(__DIR__, 2) . '/public';
+        $fullPath = $publicPath . '/' . ltrim($path, '/');
 
         if (!file_exists($fullPath)) {
             return $path;
         }
 
-        $hash = md5_file($fullPath);
-        return $path . '?v=' . substr($hash, 0, 8);
+        $version = self::getFileVersion($fullPath);
+
+        return $path . (strpos($path, '?') === false ? '?' : '&') . 'v=' . $version;
+    }
+
+    private static function getFileVersion(string $filePath): string
+    {
+        if (function_exists('md5_file')) {
+            return substr(md5_file($filePath), 0, 8);
+        }
+
+        return filemtime($filePath);
     }
 }
