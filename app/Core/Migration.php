@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Core\Database;
+namespace App\Core;
 
 use Illuminate\Database\Capsule\Manager as Capsule;
 use Illuminate\Database\Schema\Builder;

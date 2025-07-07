@@ -17,22 +17,24 @@ class MakeMigrationCommand extends Command
             return 1;
         }
 
-        $name = $this->getMigrationName($arguments[0]);
-        $fileName = date('Y_m_d_His').'_'.$name.'.php';
-        $migrationsPath = database_path('migrations');
-        $filePath = $migrationsPath . DIRECTORY_SEPARATOR . $fileName;
+        $name = $this->normalizeInput($arguments[0]);
+        $className = $this->generateClassName($name);
+        $tableName = $this->generateTableName($name);
+        $fileName = $this->generateFileName($name);
 
-        if (!is_dir($migrationsPath)) {
-            if (!mkdir($migrationsPath, 0755, true)) {
-                $this->error("Failed to create migrations directory");
-                return 1;
-            }
+        $filePath = database_path('migrations/'.$fileName);
+
+        if (!is_dir(database_path('migrations'))) {
+            mkdir(database_path('migrations'), 0755, true);
         }
 
-        $stub = $this->getStubContent($name);
+        $stub = $this->getStubContent($className, $tableName);
 
         if (file_put_contents($filePath, $stub)) {
-            $this->info("Migration created: {$fileName}");
+            $this->info("Migration created successfully!");
+            $this->line("File: {$fileName}");
+            $this->line("Class: {$className}");
+            $this->line("Table: {$tableName}");
             return 0;
         }
 
@@ -40,20 +42,61 @@ class MakeMigrationCommand extends Command
         return 1;
     }
 
-    protected function getMigrationName(string $input): string
+    protected function normalizeInput(string $input): string
     {
+        // Удаляем все недопустимые символы
         return preg_replace('/[^a-zA-Z0-9_]/', '', $input);
     }
 
-    protected function getStubContent(string $className): string
+    protected function generateClassName(string $name): string
     {
-        $stubPath = __DIR__. DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'migration.stub';
+        // Удаляем create_ и _table если они есть
+        $cleanName = preg_replace(['/^create_/i', '/_table$/i'], '', $name);
+
+        // Преобразуем snake_case в PascalCase
+        $className = str_replace('_', '', ucwords($cleanName, '_'));
+
+        // Добавляем стандартные префикс и суффикс
+        return 'Create' . $className . 'Table';
+    }
+
+    protected function generateTableName(string $name): string
+    {
+        // Удаляем create_ и _table если они есть
+        $table = preg_replace(['/^create_/i', '/_table$/i'], '', $name);
+
+        // Приводим к snake_case
+        return strtolower($table);
+    }
+
+    protected function generateFileName(string $name): string
+    {
+        // Проверяем, нужно ли добавить create_ и _table
+        $fileName = strtolower($name);
+        if (!str_starts_with($fileName, 'create_')) {
+            $fileName = 'create_' . $fileName;
+        }
+        if (!str_ends_with($fileName, '_table')) {
+            $fileName .= '_table';
+        }
+
+        return date('Y_m_d_His') . '_' . $fileName . '.php';
+    }
+
+    protected function getStubContent(string $className, string $tableName): string
+    {
+        $stubPath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'migration.stub';
+
         if (!file_exists($stubPath)) {
-            $this->error("Migration stub file not found");
-            return '';
+            throw new \RuntimeException('Migration stub file not found at: ' . $stubPath);
         }
 
         $stub = file_get_contents($stubPath);
-        return str_replace('{{ClassName}}', 'Create'.ucfirst($className).'Table', $stub);
+
+        return str_replace(
+            ['{{ClassName}}', '{{TableName}}'],
+            [$className, $tableName],
+            $stub
+        );
     }
 }

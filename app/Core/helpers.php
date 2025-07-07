@@ -20,3 +20,12 @@ if (!function_exists('app_path')) {
         return base_path('app' . ($path ? DIRECTORY_SEPARATOR . $path : $path));
     }
 }
+
+use Illuminate\Support\Carbon;
+
+if (!function_exists('now')) {
+    function now(): Carbon
+    {
+        return Carbon::now();
+    }
+}
