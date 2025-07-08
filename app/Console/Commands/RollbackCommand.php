@@ -11,18 +11,23 @@ use RuntimeException;
 class RollbackCommand extends Command
 {
     protected string $name = 'migrate:rollback';
-    protected string $description = 'Rollback the last batch of migrations';
+    protected string $description = 'Rollback database migrations';
+    protected array $arguments = [
+        ['steps', 'Number of batches to rollback', 1]
+    ];
 
     private Config $config;
 
     public function __construct()
     {
+        parent::__construct();
         $this->config = Config::getInstance();
     }
 
     public function handle(array $arguments): int
     {
         try {
+            $steps = (int)($arguments['steps'] ?? 1);
             $this->initDatabase();
             $this->info("Using database driver: " . Database::getDriverName());
 
@@ -31,21 +36,39 @@ class RollbackCommand extends Command
                 return 1;
             }
 
-            $batch = $this->getLastBatchNumber();
-            $migrations = $this->getMigrationsForBatch($batch);
+            $totalRolledBack = 0;
 
-            if (empty($migrations)) {
+            for ($i = 0; $i < $steps; $i++) {
+                $batch = $this->getLastBatchNumber();
+
+                // Если больше нечего откатывать
+                if ($batch === 0) {
+                    break;
+                }
+
+                $migrations = $this->getMigrationsForBatch($batch);
+
+                if (empty($migrations)) {
+                    $this->info("Nothing to rollback in batch {$batch}");
+                    break;
+                }
+
+                $count = 0;
+                foreach ($migrations as $migration) {
+                    $this->rollbackMigration($migration);
+                    $count++;
+                }
+
+                $totalRolledBack += $count;
+                $this->info("Rolled back {$count} migration(s) from batch {$batch}");
+            }
+
+            if ($totalRolledBack > 0) {
+                $this->info("Successfully rolled back {$totalRolledBack} migration(s)");
+            } else {
                 $this->info("Nothing to rollback");
-                return 0;
             }
 
-            $count = 0;
-            foreach ($migrations as $migration) {
-                $this->rollbackMigration($migration);
-                $count++;
-            }
-
-            $this->info("Successfully rolled back {$count} migration(s)");
             return 0;
         } catch (\Exception $e) {
             $this->error("Rollback failed: " . $e->getMessage());
@@ -97,7 +120,10 @@ class RollbackCommand extends Command
         $className = $this->getMigrationClassName($migration->migration);
 
         if (!class_exists($className)) {
-            throw new RuntimeException("Migration class {$className} not found");
+            $className = $this->findMigrationClass($filePath);
+            if ($className === null) {
+                throw new RuntimeException("Migration class not found in file {$filePath}");
+            }
         }
 
         $instance = new $className();
@@ -107,7 +133,7 @@ class RollbackCommand extends Command
             ->where('migration', $migration->migration)
             ->delete();
 
-        $this->line("Rolled back: {$migration->migration}");
+        $this->line("Rolled back: {$migration->migration} ({$className})");
     }
 
     protected function getMigrationClassName(string $migration): string
@@ -117,16 +143,22 @@ class RollbackCommand extends Command
 
         $nameParts = array_slice($parts, 4);
 
+        $isUpdate = str_starts_with(strtolower(implode('_', $nameParts)), 'update_') ||
+            str_contains(strtolower(implode('_', $nameParts)), '_update');
+
         $className = implode('', array_map('ucfirst', $nameParts));
+        $className = preg_replace('/^(Create|Update)/', '', $className);
+        $className = preg_replace('/Table$/', '', $className);
 
-        if (!str_starts_with($className, 'Create')) {
-            $className = 'Create'.$className;
+        return $isUpdate ? 'Update' . $className . 'Table' : 'Create' . $className . 'Table';
+    }
+
+    protected function findMigrationClass(string $filePath): ?string
+    {
+        $content = file_get_contents($filePath);
+        if (preg_match('/class\s+([^\s]+)\s+extends/', $content, $matches)) {
+            return $matches[1];
         }
-
-        if (!str_ends_with($className, 'Table')) {
-            $className .= 'Table';
-        }
-
-        return $className;
+        return null;
     }
 }
