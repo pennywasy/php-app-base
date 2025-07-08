@@ -20,7 +20,6 @@ class RollbackCommand extends Command
 
     public function __construct()
     {
-        parent::__construct();
         $this->config = Config::getInstance();
     }
 
