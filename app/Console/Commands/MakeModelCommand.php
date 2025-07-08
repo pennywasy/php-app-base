@@ -7,7 +7,7 @@ use App\Core\Command;
 class MakeModelCommand extends Command
 {
     protected string $name = 'make:model';
-    protected string $description = 'Create a new model class';
+    protected string $description = 'Create a new Eloquent model class';
 
     public function handle(array $arguments): int
     {
@@ -16,18 +16,29 @@ class MakeModelCommand extends Command
             return 1;
         }
 
-        $name = ucfirst($arguments[0]);
-        $filePath = app_path("Models" . DIRECTORY_SEPARATOR . "{$name}.php");
+        $className = $this->normalizeName($arguments[0]);
+        $modelName = $this->normalizeModelName($arguments[0]);
+        $tableName = $this->guessTableName($modelName);
+        $directory = app_path('Models');
+        $filePath = $directory . DIRECTORY_SEPARATOR . "{$modelName}.php";
 
-        if (file_exists($filePath)) {
-            $this->error("Model {$name} already exists!");
+        // Создаем директорию Models если ее нет
+        if (!is_dir($directory) && !mkdir($directory, 0755, true)) {
+            $this->error("Failed to create Models directory");
             return 1;
         }
 
-        $stub = $this->getStubContent($name);
+        if (file_exists($filePath)) {
+            $this->error("Model {$modelName} already exists!");
+            return 1;
+        }
+
+        $stub = $this->getStubContent($className, $modelName, $tableName);
 
         if (file_put_contents($filePath, $stub)) {
-            $this->info("Model created: {$name}");
+            $this->info("Model created successfully!");
+            $this->line("Path: {$filePath}");
+            $this->line("Table name: {$tableName}");
             return 0;
         }
 
@@ -35,9 +46,35 @@ class MakeModelCommand extends Command
         return 1;
     }
 
-    protected function getStubContent(string $className): string
+    protected function normalizeModelName(string $name): string
     {
-        $stub = file_get_contents(__DIR__. DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'model.stub');
-        return str_replace('{{ClassName}}', $className, $stub);
+        $name = preg_replace('/[^a-zA-Z0-9]/', '', $name);
+        return ucfirst($name);
+    }
+
+    protected function guessTableName(string $modelName): string
+    {
+        return strtolower(preg_replace('/(?<!^)[A-Z]/', '_$0', $modelName)) . 's';
+    }
+
+    protected function normalizeName(string $name): string
+    {
+        $name = preg_replace('/[^a-zA-Z0-9]/', '', $name);
+        return ucfirst($name);
+    }
+    protected function getStubContent(string $className, string $modelName, string $tableName): string
+    {
+        $stubPath = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'stubs' . DIRECTORY_SEPARATOR . 'model.stub';
+
+        if (!file_exists($stubPath)) {
+            throw new \RuntimeException('Model stub file not found at: ' . $stubPath);
+        }
+
+        $stub = file_get_contents($stubPath);
+        return str_replace(
+            ['{{ClassName}}', '{{ModelName}}', '{{table_name}}'],
+            [$className, $modelName, $tableName],
+            $stub
+        );
     }
 }

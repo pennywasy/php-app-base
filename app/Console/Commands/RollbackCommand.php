@@ -86,7 +86,7 @@ class RollbackCommand extends Command
 
     protected function rollbackMigration(object $migration): void
     {
-        $filePath = database_path("migrations/{$migration->migration}.php");
+        $filePath = database_path("migrations" . DIRECTORY_SEPARATOR ."{$migration->migration}.php");
 
         if (!file_exists($filePath)) {
             throw new RuntimeException("Migration file not found: {$migration->migration}");
@@ -112,22 +112,17 @@ class RollbackCommand extends Command
 
     protected function getMigrationClassName(string $migration): string
     {
-        // Пример: 2023_05_20_000000_create_users_table.php → CreateUsersTable
         $baseName = pathinfo($migration, PATHINFO_FILENAME);
         $parts = explode('_', $baseName);
 
-        // Пропускаем временную метку (первые 4 части)
         $nameParts = array_slice($parts, 4);
 
-        // Склеиваем оставшиеся части и преобразуем в CamelCase
         $className = implode('', array_map('ucfirst', $nameParts));
 
-        // Добавляем префикс Create если его нет
         if (!str_starts_with($className, 'Create')) {
             $className = 'Create'.$className;
         }
 
-        // Добавляем суффикс Table если его нет
         if (!str_ends_with($className, 'Table')) {
             $className .= 'Table';
         }

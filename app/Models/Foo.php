@@ -2,16 +2,17 @@
 
 namespace App\Models;
 
+
 use App\Core\Model;
 
-class {{ClassName}} extends Model
+class Foo extends Model
 {
-    protected $table = '{{table_name}}';
+    protected $table = 'foo';
     protected $primaryKey = 'id';
     public $timestamps = true;
 
     protected $fillable = [
-        // Add your fillable fields here
+        "name"
     ];
 
     protected $casts = [

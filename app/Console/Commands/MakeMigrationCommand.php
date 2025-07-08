@@ -22,7 +22,7 @@ class MakeMigrationCommand extends Command
         $tableName = $this->generateTableName($name);
         $fileName = $this->generateFileName($name);
 
-        $filePath = database_path('migrations/'.$fileName);
+        $filePath = database_path('migrations'. DIRECTORY_SEPARATOR .$fileName);
 
         if (!is_dir(database_path('migrations'))) {
             mkdir(database_path('migrations'), 0755, true);
@@ -44,34 +44,27 @@ class MakeMigrationCommand extends Command
 
     protected function normalizeInput(string $input): string
     {
-        // Удаляем все недопустимые символы
         return preg_replace('/[^a-zA-Z0-9_]/', '', $input);
     }
 
     protected function generateClassName(string $name): string
     {
-        // Удаляем create_ и _table если они есть
         $cleanName = preg_replace(['/^create_/i', '/_table$/i'], '', $name);
 
-        // Преобразуем snake_case в PascalCase
         $className = str_replace('_', '', ucwords($cleanName, '_'));
 
-        // Добавляем стандартные префикс и суффикс
         return 'Create' . $className . 'Table';
     }
 
     protected function generateTableName(string $name): string
     {
-        // Удаляем create_ и _table если они есть
         $table = preg_replace(['/^create_/i', '/_table$/i'], '', $name);
 
-        // Приводим к snake_case
         return strtolower($table);
     }
 
     protected function generateFileName(string $name): string
     {
-        // Проверяем, нужно ли добавить create_ и _table
         $fileName = strtolower($name);
         if (!str_starts_with($fileName, 'create_')) {
             $fileName = 'create_' . $fileName;
