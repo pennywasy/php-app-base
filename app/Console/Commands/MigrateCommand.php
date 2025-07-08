@@ -25,7 +25,7 @@ class MigrateCommand extends Command
         try {
             $this->initDatabase();
 
-            if (!Database::schema()->hasTable('migrations')) {
+            if (!$this->migrationsTableExists()) {
                 $this->createMigrationsTable();
                 $this->info('Created migrations table');
             }
@@ -55,7 +55,6 @@ class MigrateCommand extends Command
 
     protected function initDatabase(): void
     {
-        // Получаем драйвер из .env или конфига
         $driver = $_ENV['DB_DRIVER'] ?? $this->config->get('database.default');
         $config = $this->config->get("database.connections.{$driver}");
 
@@ -63,7 +62,6 @@ class MigrateCommand extends Command
             throw new RuntimeException("Configuration for database driver '{$driver}' not found");
         }
 
-        // Инициализируем подключение к БД
         Database::init($config);
     }
 
@@ -78,8 +76,7 @@ class MigrateCommand extends Command
             $table->increments('id');
             $table->string('migration')->unique();
             $table->integer('batch');
-            $table->timestamp('created_at')->useCurrent();
-            $table->timestamp('updated_at')->useCurrent();
+            $table->timestamps();
         });
     }
 
@@ -115,32 +112,25 @@ class MigrateCommand extends Command
 
     protected function getMigrationClassName(string $migration): string
     {
-        // Пример: 2023_05_20_000000_create_users_table.php → CreateUsersTable
         $baseName = pathinfo($migration, PATHINFO_FILENAME);
         $parts = explode('_', $baseName);
 
-        // Пропускаем временную метку (первые 4 части)
         $nameParts = array_slice($parts, 4);
 
-        // Склеиваем оставшиеся части и преобразуем в CamelCase
+        $isUpdate = str_starts_with(strtolower(implode('_', $nameParts)), 'update_') ||
+            str_contains(strtolower(implode('_', $nameParts)), '_update');
+
         $className = implode('', array_map('ucfirst', $nameParts));
 
-        // Добавляем префикс Create если его нет
-        if (!str_starts_with($className, 'Create')) {
-            $className = 'Create'.$className;
-        }
+        $className = preg_replace('/^(Create|Update)/', '', $className);
+        $className = preg_replace('/Table$/', '', $className);
 
-        // Добавляем суффикс Table если его нет
-        if (!str_ends_with($className, 'Table')) {
-            $className .= 'Table';
-        }
-
-        return $className;
+        return $isUpdate ? 'Update' . $className . 'Table' : 'Create' . $className . 'Table';
     }
 
     protected function runMigration(string $migration, int $batch): void
     {
-        $filePath = database_path("migrations" . DIRECTORY_SEPARATOR . "{$migration}.php");
+        $filePath = database_path("migrations/{$migration}.php");
 
         if (!file_exists($filePath)) {
             throw new RuntimeException("Migration file not found: {$migration}");
@@ -151,7 +141,10 @@ class MigrateCommand extends Command
         $className = $this->getMigrationClassName($migration);
 
         if (!class_exists($className)) {
-            throw new RuntimeException("Migration class {$className} not found in file {$filePath}");
+            $className = $this->findMigrationClass($filePath);
+            if ($className === null) {
+                throw new RuntimeException("Migration class not found in file {$filePath}");
+            }
         }
 
         $instance = new $className();
@@ -160,13 +153,21 @@ class MigrateCommand extends Command
         Database::table('migrations')->insert([
             'migration' => $migration,
             'batch' => $batch,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => Carbon::now(),
+            'updated_at' => Carbon::now(),
         ]);
 
-        $this->line("Migrated: {$migration}");
+        $this->line("Migrated: {$migration} ({$className})");
     }
 
+    protected function findMigrationClass(string $filePath): ?string
+    {
+        $content = file_get_contents($filePath);
+        if (preg_match('/class\s+([^\s]+)\s+extends/', $content, $matches)) {
+            return $matches[1];
+        }
+        return null;
+    }
 
     protected function getNextBatchNumber(): int
     {
