@@ -11,10 +11,7 @@ use RuntimeException;
 class RollbackCommand extends Command
 {
     protected string $name = 'migrate:rollback';
-    protected string $description = 'Rollback database migrations';
-    protected array $arguments = [
-        ['steps', 'Number of batches to rollback', 1]
-    ];
+    protected string $description = 'Rollback the last batch of migrations';
 
     private Config $config;
 
@@ -26,7 +23,6 @@ class RollbackCommand extends Command
     public function handle(array $arguments): int
     {
         try {
-            $steps = (int)($arguments['steps'] ?? 1);
             $this->initDatabase();
             $this->info("Using database driver: " . Database::getDriverName());
 
@@ -35,39 +31,21 @@ class RollbackCommand extends Command
                 return 1;
             }
 
-            $totalRolledBack = 0;
+            $batch = $this->getLastBatchNumber();
+            $migrations = $this->getMigrationsForBatch($batch);
 
-            for ($i = 0; $i < $steps; $i++) {
-                $batch = $this->getLastBatchNumber();
-
-                // Если больше нечего откатывать
-                if ($batch === 0) {
-                    break;
-                }
-
-                $migrations = $this->getMigrationsForBatch($batch);
-
-                if (empty($migrations)) {
-                    $this->info("Nothing to rollback in batch {$batch}");
-                    break;
-                }
-
-                $count = 0;
-                foreach ($migrations as $migration) {
-                    $this->rollbackMigration($migration);
-                    $count++;
-                }
-
-                $totalRolledBack += $count;
-                $this->info("Rolled back {$count} migration(s) from batch {$batch}");
-            }
-
-            if ($totalRolledBack > 0) {
-                $this->info("Successfully rolled back {$totalRolledBack} migration(s)");
-            } else {
+            if (empty($migrations)) {
                 $this->info("Nothing to rollback");
+                return 0;
             }
 
+            $count = 0;
+            foreach ($migrations as $migration) {
+                $this->rollbackMigration($migration);
+                $count++;
+            }
+
+            $this->info("Successfully rolled back {$count} migration(s)");
             return 0;
         } catch (\Exception $e) {
             $this->error("Rollback failed: " . $e->getMessage());
@@ -119,6 +97,7 @@ class RollbackCommand extends Command
         $className = $this->getMigrationClassName($migration->migration);
 
         if (!class_exists($className)) {
+            // Попробуем найти класс без строгого соответствия шаблону
             $className = $this->findMigrationClass($filePath);
             if ($className === null) {
                 throw new RuntimeException("Migration class not found in file {$filePath}");
@@ -126,7 +105,20 @@ class RollbackCommand extends Command
         }
 
         $instance = new $className();
-        $instance->down();
+
+        // Для SQLite временно отключаем foreign keys
+        if (Database::getDriverName() === 'sqlite') {
+            Database::connection()->statement('PRAGMA foreign_keys = OFF');
+        }
+
+        try {
+            $instance->down();
+        } finally {
+            // Включаем foreign keys обратно для SQLite
+            if (Database::getDriverName() === 'sqlite') {
+                Database::connection()->statement('PRAGMA foreign_keys = ON');
+            }
+        }
 
         Database::table('migrations')
             ->where('migration', $migration->migration)
@@ -142,13 +134,17 @@ class RollbackCommand extends Command
 
         $nameParts = array_slice($parts, 4);
 
+        // Определяем тип миграции
         $isUpdate = str_starts_with(strtolower(implode('_', $nameParts)), 'update_') ||
             str_contains(strtolower(implode('_', $nameParts)), '_update');
 
         $className = implode('', array_map('ucfirst', $nameParts));
+
+        // Удаляем возможные префиксы/суффиксы
         $className = preg_replace('/^(Create|Update)/', '', $className);
         $className = preg_replace('/Table$/', '', $className);
 
+        // Формируем итоговое имя класса
         return $isUpdate ? 'Update' . $className . 'Table' : 'Create' . $className . 'Table';
     }
 

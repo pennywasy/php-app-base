@@ -7,12 +7,13 @@ use Exception;
 
 class  ViewController
 {
-    public function __construct() {}
+    public function __construct() {
+    }
 
     /**
      * @throws Exception
      */
     public function handle() {
-        return View::render('index.php', []);
+        return View::renderAngular();
     }
 }

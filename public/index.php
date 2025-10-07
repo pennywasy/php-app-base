@@ -3,7 +3,7 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 ini_set('short_open_tag', '1');
 
-//error_reporting(E_ALL);
+error_reporting(E_ALL);
 
 if (ob_get_level() > 0) {
     ob_end_clean();

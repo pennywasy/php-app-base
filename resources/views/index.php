@@ -9,9 +9,9 @@
     <title>График прибыли</title>
 </head>
 <body>
-    <h1>
-        Hello, world!
-    </h1>
+    <pre>
+        <?php print_r($data); ?>
+    </pre>
 <script src="<?= \App\Core\View::asset('/assets/js/script.js') ?>"></script>
 </body>
 </html>
