@@ -6,7 +6,7 @@ return [
     'connections' => [
         'sqlite' => [
             'driver' => 'sqlite',
-            'database' => __DIR__. DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'database' .  DIRECTORY_SEPARATOR . $_ENV['DB_DATABASE']
+            'database' => __DIR__. DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'resources' . DIRECTORY_SEPARATOR . 'database' .  DIRECTORY_SEPARATOR .( $_ENV['DB_DATABASE'] ?? '')
                 ?? __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . 'database' . DIRECTORY_SEPARATOR . 'database.sqlite',
             'prefix' => '',
             'foreign_key_constraints' => $_ENV['DB_FOREIGN_KEYS'] ?? false,

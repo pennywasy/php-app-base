@@ -21,7 +21,8 @@ abstract class Model extends EloquentModel
     {
         if (static::$capsule === null) {
             $config = Config::getInstance()->get('database');
-            $connection = $config['connections'][$config['default']] ?? null;
+            $dbDriver = $_ENV['DB_DRIVER'];
+            $connection = $config['connections'][$dbDriver] ?? null;
 
             if (!$connection) {
                 throw new RuntimeException('Database connection not configured');
